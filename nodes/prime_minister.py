@@ -24,8 +24,6 @@ def _tool_status() -> str:
 
 
 def _with_ai_copy(command: str, fallback: dict[str, str]) -> dict[str, str]:
-    if not is_openai_enabled():
-        return fallback
     return {**fallback, **improve_workflow_copy(command, fallback)}
 
 

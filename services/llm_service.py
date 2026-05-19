@@ -11,6 +11,10 @@ load_dotenv()
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
+class LLMServiceError(RuntimeError):
+    pass
+
+
 def is_openai_enabled() -> bool:
     return bool(os.getenv("OPENAI_API_KEY"))
 
@@ -36,19 +40,21 @@ def generate_json(
     max_output_tokens: int = 700,
 ) -> dict[str, Any]:
     if not is_openai_enabled():
-        return fallback
+        raise LLMServiceError("OPENAI_API_KEY is not configured.")
 
     try:
         response = _client().responses.create(
             model=OPENAI_MODEL,
             instructions=system_prompt,
-            input=user_prompt,
+            input=f"{user_prompt}\n\nReturn the answer as a JSON object.",
             text={"format": {"type": "json_object"}},
             max_output_tokens=max_output_tokens,
         )
         return _extract_json(response.output_text)
-    except (OpenAIError, json.JSONDecodeError, AttributeError, TypeError, ValueError):
-        return fallback
+    except OpenAIError as exc:
+        raise LLMServiceError(f"OpenAI API request failed: {exc}") from exc
+    except (json.JSONDecodeError, AttributeError, TypeError, ValueError) as exc:
+        raise LLMServiceError(f"OpenAI response was not valid JSON: {exc}") from exc
 
 
 def improve_workflow_copy(command: str, fallback: dict[str, str]) -> dict[str, str]:

@@ -35,7 +35,7 @@ OPENAI_API_KEY=sk-your-api-key-here
 OPENAI_MODEL=gpt-4o-mini
 ```
 
-If `OPENAI_API_KEY` is set, the backend uses the OpenAI Responses API for workflow copy, importance classification, summaries, and Royal Reports. If it is missing or an API call fails, the MVP falls back to deterministic mock behavior.
+`OPENAI_API_KEY` is required for workflow planning and execution. The backend uses the OpenAI Responses API for workflow copy, importance classification, summaries, and Royal Reports. If the key is missing, `/api/workflows/plan` and `/api/workflows/run` return an error instead of silently using mock AI output.
 
 ## Configure Supabase
 
@@ -192,7 +192,7 @@ curl -X POST http://localhost:8000/api/workflows/run \
 - `graphs/execution_graph.py`: LangGraph mock execution graph.
 - `nodes/`: Prime Minister and Department node functions.
 - `tools/mock_tools.py`: Mock email, summary, document, research, and report tools.
-- `services/llm_service.py`: OpenAI Responses API wrapper with mock fallback.
+- `services/llm_service.py`: OpenAI Responses API wrapper.
 - `services/gmail_service.py`: Google OAuth and Gmail readonly API helper.
 - `services/supabase_client.py`: Supabase client configuration.
 - `storage/memory_store.py`: In-memory workflow and run storage fallback.

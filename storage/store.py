@@ -41,3 +41,10 @@ def get_connected_account(provider: str) -> dict | None:
     if is_supabase_enabled():
         return supabase_store.get_connected_account(provider)
     return memory_store.get_connected_account(provider)
+
+
+def delete_connected_account(provider: str) -> None:
+    if is_supabase_enabled():
+        supabase_store.delete_connected_account(provider)
+        return
+    memory_store.delete_connected_account(provider)

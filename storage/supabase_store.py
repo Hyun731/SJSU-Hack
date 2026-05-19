@@ -76,3 +76,8 @@ def get_connected_account(provider: str) -> dict | None:
     if not response.data:
         return None
     return response.data[0]
+
+
+def delete_connected_account(provider: str) -> None:
+    client = get_supabase_client()
+    client.table("connected_accounts").delete().eq("provider", provider).execute()

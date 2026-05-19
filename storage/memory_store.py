@@ -34,6 +34,10 @@ def get_connected_account(provider: str) -> dict | None:
     return _connected_accounts.get(provider)
 
 
+def delete_connected_account(provider: str) -> None:
+    _connected_accounts.pop(provider, None)
+
+
 def next_run_id() -> str:
     global _run_counter
     _run_counter += 1

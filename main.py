@@ -2,13 +2,16 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from graphs.execution_graph import run_workflow
 from graphs.planner_graph import plan_workflow
 from schemas.workflow import PlanWorkflowRequest, RunWorkflowRequest, WorkflowPlan, WorkflowRunResult
 from services.gmail_service import (
     build_google_auth_url,
+    disconnect_google_account,
     exchange_google_code,
+    FRONTEND_URL,
     gmail_connection_status,
     is_gmail_connected,
     is_google_oauth_configured,
@@ -48,6 +51,14 @@ def storage_status() -> dict[str, str]:
     return {"backend": storage_backend_name()}
 
 
+def ensure_openai_ready() -> None:
+    if not is_openai_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail="OPENAI_API_KEY is required for workflow planning and execution.",
+        )
+
+
 @app.get("/api/integrations/google/status")
 def google_status() -> dict[str, Any]:
     return gmail_connection_status()
@@ -62,12 +73,18 @@ def google_auth_url() -> dict[str, str]:
 
 
 @app.get("/api/integrations/google/callback")
-def google_callback(code: str) -> dict:
+def google_callback(code: str):
     try:
-        account = exchange_google_code(code)
-        return {"status": "connected", "account": account}
+        exchange_google_code(code)
+        return RedirectResponse(url=f"{FRONTEND_URL}/?gmail=connected", status_code=302)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Google OAuth failed: {exc}") from exc
+        return RedirectResponse(url=f"{FRONTEND_URL}/?gmail=error", status_code=302)
+
+
+@app.delete("/api/integrations/google")
+def google_disconnect() -> dict[str, str]:
+    disconnect_google_account()
+    return {"status": "disconnected"}
 
 
 @app.get("/api/integrations/gmail/latest")
@@ -85,7 +102,11 @@ def gmail_latest() -> dict:
     response_model_exclude_none=True,
 )
 def create_workflow_plan(request: PlanWorkflowRequest) -> WorkflowPlan:
-    plan = plan_workflow(request.command)
+    ensure_openai_ready()
+    try:
+        plan = plan_workflow(request.command)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"AI planning failed: {exc}") from exc
     save_workflow(plan)
     return plan
 
@@ -97,6 +118,7 @@ def create_workflow_plan(request: PlanWorkflowRequest) -> WorkflowPlan:
     response_model_exclude_none=True,
 )
 def execute_workflow(request: RunWorkflowRequest) -> WorkflowRunResult:
+    ensure_openai_ready()
     workflow = get_workflow(request.workflow_id)
     if workflow is None:
         raise HTTPException(
@@ -104,6 +126,9 @@ def execute_workflow(request: RunWorkflowRequest) -> WorkflowRunResult:
             detail=f"Workflow '{request.workflow_id}' was not found. Create a plan first.",
         )
 
-    result = run_workflow(workflow, request.input)
+    try:
+        result = run_workflow(workflow, request.input)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"AI execution failed: {exc}") from exc
     save_run(result, input_data=request.input)
     return result

@@ -10,13 +10,18 @@ from urllib.parse import urlencode
 import httpx
 from dotenv import load_dotenv
 
-from storage.store import get_connected_account, save_connected_account
+from storage.store import (
+    delete_connected_account,
+    get_connected_account,
+    save_connected_account,
+)
 
 
 load_dotenv()
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
 GOOGLE_REDIRECT_URI = os.getenv(
     "GOOGLE_REDIRECT_URI", "http://localhost:8000/api/integrations/google/callback"
 )
@@ -40,6 +45,10 @@ def is_google_oauth_configured() -> bool:
 
 def is_gmail_connected() -> bool:
     return get_connected_account("google") is not None
+
+
+def disconnect_google_account() -> None:
+    delete_connected_account("google")
 
 
 def gmail_connection_status() -> dict[str, Any]:
