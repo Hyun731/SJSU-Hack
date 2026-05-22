@@ -42,6 +42,7 @@ def _route_first_department(state: ExecutionState) -> str:
     return "summary_department"
 
 
+
 def build_execution_graph():
     graph = StateGraph(ExecutionState)
     graph.add_node("prime_minister_execute", prime_minister_execute_node)
